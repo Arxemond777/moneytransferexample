@@ -49,6 +49,12 @@ public class UserDto {
         return balance;
     }
 
+    /**
+     * You don`t need any synchronization here because this method used only a thread choices by the formula
+     * ({@link mondeytransfer.dto.TransactionDto#fromId} % {@link mondeytransfer.service.TransactionsService#COUNT_THREADS})
+     *
+     * @param balance
+     */
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
@@ -69,6 +75,12 @@ public class UserDto {
         return "{" + "\"id\":" + id + ", \"balance\": \"" + balance+"\"}";
     }
 
+    /**
+     * synchronized for atomicity in order if there were send several transaction from different senders
+     * an receiver for all this transactions the same user.
+     *
+     * @param sentSum
+     */
     public synchronized void plusBalance(BigDecimal sentSum) {
         balance = balance.add(sentSum);
     }

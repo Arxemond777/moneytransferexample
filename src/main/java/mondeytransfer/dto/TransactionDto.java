@@ -9,6 +9,12 @@ import java.util.UUID;
 public class TransactionDto {
     public TransactionDto() {}
 
+    public TransactionDto(final Long fromId, final BigDecimal sentSum, final Long toId) {
+        this.fromId = fromId;
+        this.sentSum = sentSum;
+        this.toId = toId;
+    }
+
     private final UUID transactionId = UUID.randomUUID();
 
     private Long fromId;

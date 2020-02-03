@@ -1,5 +1,3 @@
 {
   "http.port": ${http.port},
-  "db_name": "whiskies-it",
-  "connection_string": "mongodb://localhost:37017"
 }

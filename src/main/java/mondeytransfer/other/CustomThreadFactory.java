@@ -10,7 +10,7 @@ public class CustomThreadFactory implements ThreadFactory {
     private String name;
 
     public CustomThreadFactory(String name) {
-        counter = 1;
+        counter = 0;
         this.name = name;
     }
 

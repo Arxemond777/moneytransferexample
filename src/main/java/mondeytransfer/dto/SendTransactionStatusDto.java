@@ -2,12 +2,19 @@ package mondeytransfer.dto;
 
 import java.util.UUID;
 
+import static mondeytransfer.enums.Messages.TRANSACTION_SUCCESS;
+
 /**
  * @author <a href="mailto:1arxemond1@gmail.com">Yuri Glushenkov</a>
  */
 public class SendTransactionStatusDto {
-    private String status = "Request for transaction has been send success";
-    private UUID uuid = UUID.randomUUID();
+
+    public SendTransactionStatusDto(final UUID uuid) { // this constructor for mock tests
+        this.uuid = uuid;
+    }
+
+    private String status = TRANSACTION_SUCCESS;
+    private final UUID uuid; // can`t be change by business logic
 
     public String getStatus() {
         return status;

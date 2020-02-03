@@ -15,7 +15,9 @@ import java.util.Queue;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static mondeytransfer.enums.Routes.*;
 import static mondeytransfer.validator.RequestValidator.*;
+import static mondeytransfer.enums.HttpStatusesCodeEnum.*;
 
 /**
  * This is the main app controller
@@ -28,18 +30,21 @@ public class AppController {
     public AppController(final Router router) {
         this.TS = new TransactionsService();
 
-        router.post("/addUser").handler(this::addOne);
-        router.delete("/delete").handler(this::deleteById);
-        router.get("/getAll").handler(this::getAll);
-        router.get("/getById").handler(this::getById);
-        router.get("/getStatuses").handler(this::getStatuses);
+        /**
+         * Registry routes
+         */
+        router.post(CREATE_A_NEW_USER).handler(this::addOne);
+        router.get(GET_ALL).handler(this::getAll);
+        router.get(GET_BY_ID).handler(this::getById);
+        router.get(GET_STATUSES).handler(this::getStatuses);
 
-        router.post("/sendTransaction").blockingHandler(this::sendTransaction); // work with a LinkedBlockingQueue so can be blocked
+        router.post(SEND_TRANSACTION).blockingHandler(this::sendTransaction); // work with a LinkedBlockingQueue so can be blocked
     }
 
     /**
      * This method to a service of statuses
      * to push notification about transaction statuses
+     *
      * @param routingContext
      */
     private void getStatuses(RoutingContext routingContext) {
@@ -55,7 +60,7 @@ public class AppController {
             return;
         }
 
-        response.setStatusCode(200);
+        response.setStatusCode(OK.getCode());
         response.putHeader("Content-Type", "application/json");
         response.end(statusesRes);
 
@@ -71,7 +76,7 @@ public class AppController {
 
         if (isNull(getByIdPostValidator(response, user, id))) return;
 
-        response.setStatusCode(200);
+        response.setStatusCode(OK.getCode());
 
         response.end(user.response());
     }
@@ -89,26 +94,16 @@ public class AppController {
          */
         final String msg = TS.sendTransaction(td);
 
-        response.setStatusCode(200);
+        response.setStatusCode(OK.getCode());
 
         if (nonNull(msg)) {
             response.end(msg);
             return;
         }
 
-        response.end(new SendTransactionStatusDto().toString());
-    }
-
-    private void deleteById(RoutingContext routingContext) {
-        HttpServerResponse response = routingContext.response();
-
-        final UserDto user = deleteValidator(response, routingContext);
-        if (isNull(user)) return;
-
-        TS.deleteById(user.getId());
-
-        response.setStatusCode(200);
-        response.end();
+        response.end(
+                new SendTransactionStatusDto(td.getTransactionId()).toString() // save transactionId (UUID)
+        );
     }
 
     private void addOne(final RoutingContext routingContext) {
@@ -117,20 +112,21 @@ public class AppController {
         final UserDto user = addValidator(response, routingContext);
         if (isNull(user)) return;
 
+        response.setStatusCode(OK.getCode());
         final String msg = TS.addOne(user);
-        response.setStatusCode(200);
 
         if (nonNull(msg)) {
             response.end(msg);
             return;
         }
+        response.setStatusCode(CREATED.getCode());
 
         response.end();
     }
 
     private void getAll(final RoutingContext routingContext) {
         HttpServerResponse response = routingContext.response();
-        response.setStatusCode(200);
+        response.setStatusCode(OK.getCode());
         response.putHeader("Content-Type", "application/json");
 
         response.end(TS.getAll());

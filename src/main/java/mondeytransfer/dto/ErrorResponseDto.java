@@ -14,6 +14,10 @@ public class ErrorResponseDto {
         return "{error:" + msg + '}';
     }
 
+    public String getMsg() {
+        return msg;
+    }
+
     @Override
     public String toString() {
         return "{error:" + msg + '}';
