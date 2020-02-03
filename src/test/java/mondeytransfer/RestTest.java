@@ -193,7 +193,8 @@ public class RestTest {
                 .end();
 
         final String emptyTransaction // send an empty transaction
-                = Json.encodePrettily(new TransactionDto(EXIST_USER_ID, new BigDecimal(100.1), EXIST_USER_ID));
+                = Json.encodePrettily(new TransactionDto());
+        final Async async1 = context.async();
 
         vertx.createHttpClient().post(port, "localhost", SEND_TRANSACTION) // send a transaction to youself
                 .putHeader("content-type", "application/json")
@@ -202,13 +203,14 @@ public class RestTest {
                     context.assertEquals(response.statusCode(), UNPROCESSABLE_ENTITY.getCode());
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
-                        context.assertEquals(body.toString(), ErrorResponseDto.printError(EMPTY_DATA));
-                        async.complete();
+                        context.assertEquals(body.toString(), ErrorResponseDto.printError(INCORRECT_DATA));
+                        async1.complete();
                     });
                 })
                 .write(emptyTransaction)
                 .end();
 
+        final Async async2 = context.async();
         final String transactionWithSumExeedUserSum // send a transaction with sum exceed sum of the sender
                 = Json.encodePrettily(new TransactionDto(EXIST_USER_ID, EXIST_USER_ID_BALANCE.add(BigDecimal.ONE), EXIST_USER_ID_TWO));
         vertx.createHttpClient().post(port, "localhost", SEND_TRANSACTION) // send a transaction to youself
@@ -219,12 +221,13 @@ public class RestTest {
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
                         context.assertEquals(body.toString(), ErrorResponseDto.printError(USER_DOESNT_HAVE_ENOUGH_MONEY));
-                        async.complete();
+                        async2.complete();
                     });
                 })
                 .write(transactionWithSumExeedUserSum)
                 .end();
 
+        final Async async3 = context.async();
         final long unexistedId = -1;
         final String uncreatedSender // send a transaction from an uncreated sender
                 = Json.encodePrettily(new TransactionDto(unexistedId, BigDecimal.ONE, EXIST_USER_ID_TWO));
@@ -236,12 +239,13 @@ public class RestTest {
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
                         context.assertEquals(body.toString(), printError(String.format(USER_NOT_FOUND, unexistedId)));
-                        async.complete();
+                        async3.complete();
                     });
                 })
                 .write(uncreatedSender)
                 .end();
 
+        final Async async4 = context.async();
         final String uncreatedReceiver // send a transaction from an uncreated receiver
                 = Json.encodePrettily(new TransactionDto(EXIST_USER_ID, BigDecimal.ONE, unexistedId));
         vertx.createHttpClient().post(port, "localhost", SEND_TRANSACTION) // send a transaction to youself
@@ -252,12 +256,13 @@ public class RestTest {
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
                         context.assertEquals(body.toString(), printError(String.format(RECEIVER_DOESNT_HAVE_ENOUGH_MONEY, unexistedId)));
-                        async.complete();
+                        async4.complete();
                     });
                 })
                 .write(uncreatedReceiver)
                 .end();
 
+        final Async async5 = context.async();
         final long unexistedIdTwo = -2;
         final String uncreatedSenderAndReciver // send a transaction from an uncreated sender and  an uncreated receiver
                 = Json.encodePrettily(new TransactionDto(unexistedId, BigDecimal.ONE, unexistedIdTwo));
@@ -269,10 +274,27 @@ public class RestTest {
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
                         context.assertEquals(body.toString(), printError(String.format(USER_NOT_FOUND, unexistedId)));
-                        async.complete();
+                        async5.complete();
                     });
                 })
                 .write(uncreatedSenderAndReciver)
+                .end();
+
+        final Async async6 = context.async();
+        final String tsZeroSum // send a transaction from an uncreated sender and  an uncreated receiver
+                = Json.encodePrettily(new TransactionDto(EXIST_USER_ID, BigDecimal.ZERO, EXIST_USER_ID_TWO));
+        vertx.createHttpClient().post(port, "localhost", SEND_TRANSACTION)
+                .putHeader("content-type", "application/json")
+                .putHeader("content-length", Integer.toString(tsZeroSum.length()))
+                .handler(response -> {
+                    context.assertEquals(response.statusCode(), UNPROCESSABLE_ENTITY.getCode());
+                    context.assertTrue(response.headers().get("content-type").contains("application/json"));
+                    response.bodyHandler(body -> {
+                        context.assertEquals(body.toString(), printError(INCORRECT_DATA));
+                        async6.complete();
+                    });
+                })
+                .write(tsZeroSum)
                 .end();
     }
 
@@ -281,7 +303,7 @@ public class RestTest {
      */
     @Test
     public void getByIdAndCheckValidations(final TestContext context) {
-        final Async async = context.async();
+        final Async async1 = context.async();
 
         final String json = Json.encodePrettily(new UserDto(EXIST_USER_ID, EXIST_USER_ID_BALANCE));
 
@@ -295,12 +317,13 @@ public class RestTest {
                         final UserDto userDto = Json.decodeValue(body.toString(), UserDto.class);
                         context.assertEquals(userDto.getId(), EXIST_USER_ID);
                         context.assertEquals(userDto.getBalance(), EXIST_USER_ID_BALANCE);
-                        async.complete();
+                        async1.complete();
                     });
                 })
                 .write(json)
                 .end();
 
+        final Async async2 = context.async();
         final int unexistedUserId = 999;
         vertx.createHttpClient().get(port, "localhost", GET_BY_ID+"?id="+unexistedUserId) // get an unexisting user
                 .putHeader("content-type", "application/json")
@@ -309,14 +332,14 @@ public class RestTest {
                     context.assertEquals(response.statusCode(), NOT_FOUND.getCode());
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
-                        final ErrorResponseDto err = Json.decodeValue(body.toString(), ErrorResponseDto.class);
-                        context.assertEquals(err.getMsg(), String.format(USER_NOT_FOUND, unexistedUserId));
-                        async.complete();
+                        context.assertEquals(body.toString(), printError(String.format(USER_NOT_FOUND, unexistedUserId)));
+                        async2.complete();
                     });
                 })
                 .write(json)
                 .end();
 
+        final Async async3 = context.async();
         vertx.createHttpClient().get(port, "localhost", GET_BY_ID) // send an incorrect query with empty body
                 .putHeader("content-type", "application/json")
                 .putHeader("content-length", Integer.toString(json.length()))
@@ -324,14 +347,14 @@ public class RestTest {
                     context.assertEquals(response.statusCode(), UNPROCESSABLE_ENTITY.getCode());
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
-                        final ErrorResponseDto err = Json.decodeValue(body.toString(), ErrorResponseDto.class);
-                        context.assertEquals(err.getMsg(), INCORRECT_DATA);
-                        async.complete();
+                        context.assertEquals(body.toString(), printError(INCORRECT_DATA));
+                        async3.complete();
                     });
                 })
                 .write(json)
                 .end();
 
+        final Async async4 = context.async();
         vertx.createHttpClient().get(port, "localhost", GET_BY_ID+"?ids=333") // send an incorrect query without id
                 .putHeader("content-type", "application/json")
                 .putHeader("content-length", Integer.toString(json.length()))
@@ -339,9 +362,8 @@ public class RestTest {
                     context.assertEquals(response.statusCode(), UNPROCESSABLE_ENTITY.getCode());
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
-                        final ErrorResponseDto err = Json.decodeValue(body.toString(), ErrorResponseDto.class);
-                        context.assertEquals(err.getMsg(), INCORRECT_DATA);
-                        async.complete();
+                        context.assertEquals(body.toString(), printError(INCORRECT_DATA));
+                        async4.complete();
                     });
                 })
                 .write(json)
@@ -353,10 +375,7 @@ public class RestTest {
      */
     @Test
     public void createANewUserAndCheckValidations(final TestContext context) {
-        final Async async = context.async();
-
-        final long newId = 100L;
-
+        final Async async1 = context.async();
         final String existingUser = Json.encodePrettily(new UserDto(EXIST_USER_ID, EXIST_USER_ID_BALANCE));
 
         vertx.createHttpClient().post(port, "localhost", CREATE_A_NEW_USER) // duplicate a user
@@ -366,15 +385,16 @@ public class RestTest {
                     context.assertEquals(response.statusCode(), OK.getCode());
                     context.assertTrue(response.headers().get("content-type").contains("application/json"));
                     response.bodyHandler(body -> {
-                        final ErrorResponseDto err = Json.decodeValue(body.toString(), ErrorResponseDto.class);
-                        context.assertEquals(err.getMsg(), String.format(USER_EXIST, EXIST_USER_ID));
-                        async.complete();
+                        context.assertEquals(body.toString(), printError(String.format(USER_EXIST, EXIST_USER_ID)));
+                        async1.complete();
                     });
                 })
                 .write(existingUser)
                 .end();
 
 
+        final long newId = 100L;
+        final Async async2 = context.async();
         final String newUser = Json.encodePrettily(new UserDto(newId, new BigDecimal(1000)));
 
         vertx.createHttpClient().post(port, "localhost", CREATE_A_NEW_USER) // create
@@ -386,7 +406,7 @@ public class RestTest {
                     response.bodyHandler(body -> {
                         context.assertTrue(body.toString().equals(""));
 
-                        final Async async1 = context.async();
+                        final Async async3 = context.async();
 
                         // check only after a new user has been created. because this is async queries
                         vertx.createHttpClient().post(port, "localhost", CREATE_A_NEW_USER) // duplicate the user, which was created on the prev step
@@ -397,23 +417,18 @@ public class RestTest {
                                     context.assertTrue(response1.headers().get("content-type").contains("application/json"));
                                     response1.bodyHandler(body1 -> {
                                         context.assertEquals(body1.toString(), printError(String.format(USER_EXIST, newId)));
-                                        async1.complete();
+                                        async3.complete();
                                     });
                                 })
                                 .write(newUser)
                                 .end();
 
-                        async.complete();
+                        async2.complete();
                     });
                 })
                 .write(newUser)
                 .end();
-
-
-
-
     }
-
 
     private void defRequest(final TestContext context, final String urn, final String expectedResponse, final String contentType, final int statusCode) {
         // This test is asynchronous, so get an async handler to inform the test when we are done.
