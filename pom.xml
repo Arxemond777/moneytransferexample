@@ -8,7 +8,7 @@
   <version>1.0-SNAPSHOT</version>
 
   <properties>
-    <vertex.version>3.2.1</vertex.version>
+    <vertex.version>3.8.5</vertex.version>
   </properties>
 
   <dependencies>
